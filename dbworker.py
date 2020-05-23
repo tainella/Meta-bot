@@ -1,3 +1,5 @@
+#база данных Media для file_id фото на сервере телеграма, загруженных из https://www.cs.rochester.edu/u/qyou/deepemotion/
+#база данных Users для хранения развития каждого пользователя
 import config
 import os
 from sqlalchemy import Column, Integer, String

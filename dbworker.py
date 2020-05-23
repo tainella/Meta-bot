@@ -1,75 +1,73 @@
 import config
-#from sqlalchemy.types import text
+import os
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine # для настроек
 from sqlalchemy.orm import relationship 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.engine import Engine
+import random
 
-#создаем базу данных
+BASE_MEDIA_PATH = './agg'
+
+#создаем базу данных фото эмоций
 Base = declarative_base()
-class Client(Base):
-	__tablename__ = 'Client'
-	id = Column(Integer, primary_key= True)
-	name = Column(String(255))
-	age = Column(Integer)
-	state = Column(Integer)
-	mood = Column(Integer)
-engine = create_engine('sqlite:///Client.db')
+class Media(Base):
+    __tablename__ = 'Media'
+    file_id = Column(String(255), primary_key=True)
+    emotion = Column(String(255))
+engine = create_engine('sqlite:///Media.db')
 Base.metadata.bind = engine 
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
 Base.metadata.create_all(engine)	
 
+#список эмоций:
+#amusement - восторг, веселье, беззаботность, удовольствие, радость, волнение, азарт, возбуждение
+#excitement - радость, волнение, азарт, возбуждение, восторг, веселье, беззаботность, удовольствие
+#anger - злость, ярость, раздражение, недовольство, гнев
+#awe - трепет, волнение, удивление, паника, ужас, страх, ступор, боязнь, испуг, обеспокоенность
+#fear - паника, ужас, страх, ступор, боязнь, испуг, обеспокоенность, трепет, волнение, удивление 
+#contentment - довольство, удовлетворенность, спокойствие, умиротворение, комфорт, нега, сытость
+#disgust - отвращение, презрение, брезгливость, нелюбовь, ненависть, неприязнь, нерасположение, омерзение, антипатия
+#sadness - грусть, печаль, скорбь, грусть, уныние, отчаяние, тоска, жалость
+
+#создаем базу данных развития пользователя
+Base1 = declarative_base()
+class Users(Base):
+    __tablename__ = 'Users'
+    id = Column(Integer, primary_key=True)
+    #
+engine1 = create_engine('sqlite:///Users.db')
+Base1.metadata.bind = engine1
+session_factory1 = sessionmaker(bind=engine1)
+Session1 = scoped_session(session_factory1)
+Base1.metadata.create_all(engine1)	
+
 #удаляем базу данных
 def delete_table():
 	Base.metadata.drop_all(engine)
 
-# Пытаемся узнать из базы «состояние» пользователя
-def get_state(user_id):
+#создать строку с новым файлом в таблице
+def add_photo(emotio, file_i):
 	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		ag = newitem.state
-	else:
-		ag=-1
-		print("Нет такого пользователя\n")
+	if (None == session.query(Media).filter_by(file_id=file_i).scalar()):
+		newitem = Media(file_id = file_i, emotion = emotio)
+		session.add(newitem)
+		session.commit()
 	session.close()
-	return ag
+	
+#выбор картинки по текущей работе пользователя
 
-# Пытаемся узнать из базы настроение бота
-def get_mood(user_id):
+#выдать рандомную картинку заданного настроения
+def random_mood(mood):
 	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		ag = newitem.mood
-	else:
-		ag=-1
-		print("Нет такого пользователя\n")
-	session.close()
-	return ag
-
-# Пытаемся узнать из базы имя пользователя
-def get_name(user_id):
-	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		ag = newitem.name
-	else:
-		ag = " "
-		print("Нет такого пользователя\n")
-	session.close()
-	return ag
-
-# Пытаемся узнать из базы возраст пользователя
-def get_age(user_id):
-	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		ag = newitem.age
-	else:
-		ag = -1
+	while True:  
+		rand = random.randrange(0, session.query(Media).count()) 
+		row = session.query(Media)[rand] 
+		if row.emotion==mood:
+			break
+	ag = row.file_id
 	session.close()
 	return ag
 
@@ -82,48 +80,14 @@ def add_user(user_id):
 		session.commit()
 	session.close()
 
+#Изменяем текущий прогресс пользователя
+
 # Изменяем имя пользователя
 def set_age(user_id, ag):
 	session = Session()
 	if (None != session.query(Client).filter_by(id=user_id).scalar()):
 		newitem = session.query(Client).filter_by(id=user_id).one()
 		newitem.age = ag
-		session.add(newitem)
-		session.commit()
-	else:
-		print("Нет такого пользователя\n")
-	session.close()
-
-# Изменяем имя пользователя
-def set_name(user_id, nam):
-	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		newitem.name = nam
-		session.add(newitem)
-		session.commit()
-	else:
-		print("Нет такого пользователя\n")
-	session.close()
-
-# Сохраняем текущее «состояние» пользователя в нашу базу
-def set_state(user_id, stat):
-	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		newitem.state = stat
-		session.add(newitem)
-		session.commit()
-	else:
-		print("Нет такого пользователя\n")
-	session.close()
-
-# Меняем настроение бота
-def set_mood(user_id, mod):
-	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		newitem.mood = mod
 		session.add(newitem)
 		session.commit()
 	else:

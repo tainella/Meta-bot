@@ -6,8 +6,6 @@ import os
 import requests
 import urllib
 from requests import get
-#import urllib
-#import telebot
 from aiogram import Bot, types
 from aiogram.utils import executor
 from aiogram.utils.markdown import text

@@ -1,28 +1,13 @@
 #база данных Media для file_id фото на сервере телеграма, загруженных из https://www.cs.rochester.edu/u/qyou/deepemotion/
-#база данных Users для хранения развития каждого пользователя
 import config
 import os
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine # для настроек
 from sqlalchemy.orm import relationship 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.engine import Engine
 import random
-
-BASE_MEDIA_PATH = './agg'
-
-#создаем базу данных фото эмоций
-Base = declarative_base()
-class Media(Base):
-    __tablename__ = 'Media'
-    file_id = Column(String(255), primary_key=True)
-    emotion = Column(String(255))
-engine = create_engine('sqlite:///Media.db')
-Base.metadata.bind = engine 
-session_factory = sessionmaker(bind=engine)
-Session = scoped_session(session_factory)
-Base.metadata.create_all(engine)	
 
 #список эмоций:
 #amusement - восторг, веселье, беззаботность, удовольствие, радость, волнение, азарт, возбуждение
@@ -32,23 +17,20 @@ Base.metadata.create_all(engine)
 #fear - паника, ужас, страх, ступор, боязнь, испуг, обеспокоенность, трепет, волнение, удивление 
 #contentment - довольство, удовлетворенность, спокойствие, умиротворение, комфорт, нега, сытость
 #disgust - отвращение, презрение, брезгливость, нелюбовь, ненависть, неприязнь, нерасположение, омерзение, антипатия
-#sadness - грусть, печаль, скорбь, грусть, уныние, отчаяние, тоска, жалость
+#sadness - грусть, печаль, скорбь, уныние, отчаяние, тоска, жалость
 
-#создаем базу данных развития пользователя
-Base1 = declarative_base()
-class Users(Base):
-    __tablename__ = 'Users'
-    id = Column(Integer, primary_key=True)
-    #
-engine1 = create_engine('sqlite:///Users.db')
-Base1.metadata.bind = engine1
-session_factory1 = sessionmaker(bind=engine1)
-Session1 = scoped_session(session_factory1)
-Base1.metadata.create_all(engine1)	
+Base = declarative_base()
+engine = create_engine('sqlite:///Media.db')
+Base.metadata.bind = engine 
+session_factory = sessionmaker(bind=engine)
+Session = scoped_session(session_factory)
+Base.metadata.create_all(engine)	
 
-#удаляем базу данных
-def delete_table():
-	Base.metadata.drop_all(engine)
+#ТАБЛИЦЫ ПРМВЯЗКИ ФАЙЛ-АЙДИ ЭМОЦИЯ (для разделов Описание и Эмоция)
+class Media(Base):
+    __tablename__ = 'Media'
+    file_id = Column(String(255), primary_key=True)
+    emotion = Column(String(255))
 
 #создать строку с новым файлом в таблице
 def add_photo(emotio, file_i):
@@ -58,9 +40,6 @@ def add_photo(emotio, file_i):
 		session.add(newitem)
 		session.commit()
 	session.close()
-	
-#выбор картинки по текущей работе пользователя
-
 #выдать рандомную картинку заданного настроения
 def random_mood(mood):
 	session = Session()
@@ -73,36 +52,84 @@ def random_mood(mood):
 	session.close()
 	return ag
 
+#выдать картинку-описание заданного настроения
+def photo_des(moo):
+	session = Session()
+	row = session.query(Media).filter_by(emotion = moo).first()
+	ag = row.file_id
+	session.close()
+	return ag
+
+
+#ТАБЛИЦА РАБОТЫ КАЖДОГО ПОЛЬЗОВАТЕЛЯ С РАЗДЕЛОМ ТРЕНИРОВКИ
+#на каждое не усвоенное фото пользователем фото строка с уточнением пользователя,
+#первым временем ознакомления, последним использованием, "правильный/неправильный" последний ответ
+class Train(Base):
+    __tablename__ = 'Train'
+    file_id = Column(String(255)) #файловое айди
+    chat_id = Column(String(255))
+    dop = Column(Integer, primary_key=True)
+    date_in = Column(DateTime) #первое время ознакомления
+    last_in = Column(DateTime) #последнее время использования
+    an = Column(Boolean()) #"правильный/неправильный" последний ответ
+
+#создать строку с новым файлом-юзер
+def add_one(chat, file, datein, ann):
+	session = Session()
+	if (None == session.query(Train).filter(and_(file_id=file, chat_id = chat))):
+		newitem = Train(file_id = file, chat_id = chat, date_in = datein, last_in = datein, an = ann)
+		session.add(newitem)
+		session.commit()
+	session.close()
+	
+#изменить последнюю работу с файл-юзер
+def change_one(chat, file, last, ann):
+	session = Session()
+	if (None != session.query(Train).filter(and_(file_id=file, chat_id = chat))):
+		vr = session.query(Train).filter(and_(file_id=file, chat_id = chat)).one()
+		newitem = Train(file_id = file, chat_id = chat, date_in = vr.datein, last_in = last, an = ann)
+		session.add(newitem)
+		session.commit()
+	session.close()
+	
+#БАЗА ДАННЫХ ПОЛЬЗОВАТЕЛЕЙ
+class Us(Base):
+    __tablename__ = 'Us'
+    id = Column(Integer, primary_key=True)
+    state = Column(Integer) #раздел где сейчас находится
+    dop1 = Column(String(255))
+    dop2 = Column(String(255))
+
 #Добавлям пользователя в базу данных
 def add_user(user_id):
 	session = Session()
-	if (None == session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = Client(id = user_id, name = " ", age = -1, state = int(config.States.S_START), mood = int(config.Moods.M_START))
+	if (None == session.query(Us).filter_by(id=user_id).scalar()):
+		newitem = Us(id = user_id, state = int(config.States.S_START), dop1 = "_", dop2 = "_",)
 		session.add(newitem)
 		session.commit()
 	session.close()
 
-#Изменяем текущий прогресс пользователя
-
-# Изменяем имя пользователя
-def set_age(user_id, ag):
+#Меняем состояние пользователя
+def change_user(user_id, stat, do1, do2):
 	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		newitem = session.query(Client).filter_by(id=user_id).one()
-		newitem.age = ag
+	if (None != session.query(Us).filter_by(id=user_id).scalar()):
+		newitem = Us(id = user_id, state = stat, dop1 = do1, dop2 = do2,)
 		session.add(newitem)
 		session.commit()
-	else:
-		print("Нет такого пользователя\n")
 	session.close()
 
 #Удалить пользователя
 def delete_user(user_id):
 	session = Session()
-	if (None != session.query(Client).filter_by(id=user_id).scalar()):
-		ditem = session.query(Client).filter_by(id=user_id).one()
+	if (None != session.query(Us).filter_by(id=user_id).scalar()):
+		ditem = session.query(Us).filter_by(id=user_id).one()
 		session.delete(ditem)
 		session.commit()
 	else:
 		print("Нет такого пользователя\n")
 	session.close()
+
+#удаляем базу данных
+def delete_table():
+	Base.metadata.drop_all(engine)
+	

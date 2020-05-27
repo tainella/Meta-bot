@@ -157,6 +157,15 @@ async def cmd_start(message: types.Message):
 	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
 	dbworker.add_user(message.chat.id)
 
+@dp.message_handler(commands=["notification"])
+async def change_notif(message: types.Message):
+	if dbworker.get_notif(message.chat.id) == True:
+		dbworker.set_notif(message.chat.id, False)
+		await bot.send_message(chat_id = message.chat.id,text = "Вы выключили оповещения (-)")
+	else:
+		dbworker.set_notif(message.chat.id, True)
+		await bot.send_message(chat_id = message.chat.id,text = "Вы включили оповещения (+)")
+
 #ответ в тренировке
 @dp.message_handler()
 async def what_answ(msg: types.Message):
@@ -191,20 +200,16 @@ async def what_answ(msg: types.Message):
 				te = y + answ
 				await bot.send_message(chat_id = msg.chat.id, text = te)
 		else:
-			file = get__cur_file(msg.chat.id)
-			change_one(msg.chat.id, file, ann)
+			file = dbworker.get_cur_file(msg.chat.id)
+			t = dbworker.get_answ(msg.chat.id)
+			#change_one(msg.chat.id, file, ann)
+			answ = await true_answ(t)
+			y = "Неправильно."
+			te = y + answ
+			await bot.send_message(chat_id = msg.chat.id, text = te)
 		await in_training(msg.chat.id)
 	else:
 		pass
-
-@dp.message_handler(commands=["notification"])
-async def change_notif(message: types.Message):
-	if dbworker.get_notif(message.chat.id) == True:
-		dbworker.set_notif(message.chat.id, False)
-		await bot.send_message(chat_id = message.chat.id,text = "Вы выключили оповещения (-)")
-	else:
-		dbworker.set_notif(message.chat.id, True)
-		await bot.send_message(chat_id = message.chat.id,text = "Вы включили оповещения (+)")
 
 @dp.message_handler(commands=["random"])
 async def cmd_random(message: types.Message):

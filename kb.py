@@ -21,7 +21,7 @@ btn_7 = InlineKeyboardButton(emojize("Злость :rage:", use_aliases=True), c
 btn_8 = InlineKeyboardButton(emojize("Страх :scream:", use_aliases=True), callback_data='8')
 btn_9 = InlineKeyboardButton(emojize("Отвращение :nauseated_face:", use_aliases=True), callback_data='9')
 btn_10 = InlineKeyboardButton(emojize("Грусть :disappointed:", use_aliases=True), callback_data='10')
-btn_11 = InlineKeyboardButton(emojize("Умиротворение :relaxed:", use_aliases=True), callback_data='11')
+btn_11 = InlineKeyboardButton(emojize("Спокойствие:relaxed:", use_aliases=True), callback_data='11')
 inline_kb_des = InlineKeyboardMarkup().add(btn_6, btn_7, btn_8).add(btn_9, btn_10, btn_11).add(btn_5)
 
 #тренировка

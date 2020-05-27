@@ -73,7 +73,6 @@ engine1 = create_engine('sqlite:///Train.db')
 Base1.metadata.bind = engine1 
 session_factory1 = sessionmaker(bind=engine1)
 Session1 = scoped_session(session_factory1)
-Base1.metadata.create_all(engine1)
 
 class Train(Base1):
     __tablename__ = 'Train'
@@ -85,25 +84,30 @@ class Train(Base1):
     step = Column(Integer) #интервал повторения - "шаг выучивания"
     an = Column(Boolean) #"правильный/неправильный" последний ответ
 
+Base1.metadata.create_all(engine1)
 #шаги выучивания:
 #1 - 1 час; 2 - 24 часа; 3 - 48 часов; 4 - 72 часа
 #если хоть раз ответил на картинку неправильно, картинка добавляется в список повторения, 
 #выходит из него только при финальном правильном ответе через 72 часа
 	
 #изменить последнюю работу с файл-юзер (или добавить новую)
-def change_one(chat, file, ann):
+def change_one(chat, file, ann): 
 	session = Session1()
-	if (None == session.query(Train).filter(and_(file_id=file, chat_id = chat))):
-		count += 1
+	if (None == session.query(Train).filter_by(file_id=file, chat_id = chat).scalar()): #and_
+		if (None == session.query(Train).filter_by(dop = func.max(dop)).scalar()):
+			count = 0
+		else:
+			last = session.query(Train).filter_by(dop = func.max(dop)).one()
+			count = last.dop + 1
 		newitem = Train(file_id = file, chat_id = chat, dop = count, date_in = datetime.datetime.now(), last_in = datetime.datetime.now(), an = ann)
 		session.add(newitem)
 	else:
-		vr = session.query(Train).filter(and_(file_id=file, chat_id = chat)).one()
+		vr = session.query(Train).filter_by(and_(file_id=file, chat_id = chat)).one()
 		if ann == True: #увеличение интервала повторения
 			if vr.step == 4:
 				session.delete(vr)
 			else:
-				vr.step += 1
+				vr.step = vr.step + 1
 		else: #уменьшение интервала повторения
 			vr.step = 1
 		vr.last_in = datetime.datetime.now()
@@ -139,13 +143,14 @@ def repeat(chat):
 
 #проверка пришел ли пользователь СЕЙЧАС на повторную тренировку (хранится в таблице Us1)
 def was1(chat):
-	session = Session2()
-	vr = session.query(Us1).filter_by(chat_id = chat).one()
-	if vr.last_in <= (datetime.datetime.now() - timedelta(minutes=55)):
-		was(chat)
-		return True
-	else:
-		return False
+	session = Session1()
+	if (None != session.query(Train).filter_by(chat_id = chat).scalar()):
+		vr = session.query(Train).filter_by(chat_id = chat).filter_by(last_in = func.max(last_in)).one()
+		if vr.last_in <= (datetime.datetime.now() - timedelta(minutes=55)):
+			was(chat)
+			return True
+		else:
+			return False
 	session.close()
 
 #добавить последнюю картинку в тренировке
@@ -157,7 +162,7 @@ def set_send_f(chat, ph):
 	session.close()
 
 #file_id текущей картинки
-def get__cur_file(chat):
+def get_cur_file(chat):
 	session = Session2()
 	vr = session.query(Us1).filter_by(chat_id = chat).one()
 	file = vr.dop1
@@ -169,9 +174,13 @@ def get_answ(chat):
 	session = Session2()
 	vr = session.query(Us1).filter_by(chat_id = chat).one()
 	file = vr.dop1
-	vr = session.query(Media).filter_by(file_id = file).one()
-	session.close()
-	return vr.emotion
+	session1 = Session()
+	if (None != session1.query(Media).filter_by(file_id = file).scalar()):
+		vr = session1.query(Media).filter_by(file_id = file).first()
+		session.close()
+		return vr.emotion
+	else:
+		return None
 
 def set_h(chat):
 	session = Session2()
@@ -183,9 +192,12 @@ def set_h(chat):
 #проверка сколько прошло картинок на одной тренировке
 def get_h(chat):
 	session = Session2()
-	vr = session.query(Us1).filter_by(chat_id = chat).one()
-	session.close()
-	return vr.dop2
+	if (None != session.query(Us1).filter_by(chat_id = chat).scalar()):
+		vr = session.query(Us1).filter_by(chat_id = chat).one()
+		session.close()
+		return vr.dop2
+	else:
+		return None
 
 def get_state(chat):
 	session = Session2()
@@ -214,8 +226,10 @@ def was(chat):
 #найти пользователей, которым сейчас надо отправить оповещение о том, что нужно пройти тренировку
 def find_for():
 	session = Session1()
-	list = session.query(Train).filter_by(last_in = (datetime.datetime.now() - timedelta(hours=24))).all()
-	list1 = session.query(Train).filter_by(last_in = (datetime.datetime.now() - timedelta(hours=1))).all()
+	d1 = datetime.datetime.now() - timedelta(hours=24)
+	d2 = datetime.datetime.now() - timedelta(hours=1)
+	list = session.query(Train).filter_by(last_in = d1).all()
+	list1 = session.query(Train).filter_by(last_in = d2).all()
 	session.close()
 	return list + list1
 	
@@ -225,9 +239,8 @@ engine2 = create_engine('sqlite:///Us1.db')
 Base2.metadata.bind = engine2
 session_factory2 = sessionmaker(bind=engine2)
 Session2 = scoped_session(session_factory2)
-Base2.metadata.create_all(engine2)
 
-class Us1(Base):
+class Us1(Base2):
     __tablename__ = 'Us1'
     chat_id = Column(String(255), primary_key=True)
     state = Column(Integer) #раздел где сейчас находится
@@ -235,6 +248,8 @@ class Us1(Base):
     dop1 = Column(String(255))
     dop2 = Column(Integer)
     notif = Column(Boolean) #включенные/выключенные оповещения
+
+Base2.metadata.create_all(engine2)
 
 def get_notif(chat):
 	session = Session2()
@@ -281,4 +296,3 @@ def delete_user(chat):
 #удаляем базу данных
 def delete_table1():
 	Base.metadata.drop_all(engine1)
-	

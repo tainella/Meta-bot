@@ -1,0 +1,10 @@
+token = '1204699651:AAHexjnKDNMn0OHbcT27pPGeuGPkcZKY8xY'
+goodmood = '8904adafe8574e5da5e96047c66dd3a8' # Токен API к Dialogflow
+startmood = 'd9407096785c4997b5954810235c9dcf'
+badmood = 'b2c777c978bd4217b76190238f50775d'
+from enum import Enum
+from enum import IntEnum
+
+class States(IntEnum):
+	S_START = 0
+	S_TRAIN = 1

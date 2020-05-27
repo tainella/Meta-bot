@@ -1,3 +1,4 @@
+import emoji
 from emoji import emojize
 #разделы
 from aiogram.types import ReplyKeyboardRemove, \

@@ -69,7 +69,7 @@ async def send(callback_query: types.CallbackQuery):
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	await bot.send_photo(chat_id=callback_query.message.chat.id,photo = ran,caption= captio,parse_mode=types.ParseMode.HTML, reply_markup = kb.inline_kb_des1)
     elif code == 12:
-    	await bot.send_message(chat_id=cha, text = "Раздрел не доделан", reply_markup = kb.inline_kb_back)
+    	await bot.send_message(chat_id=callback_query.message.chat.id, text = "Раздрел не доделан", reply_markup = kb.inline_kb_back)
     elif code == 13:
     	cha = callback_query.message.chat.id
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)

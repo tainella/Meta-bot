@@ -4,7 +4,13 @@ from time import sleep
 import dbworker
 import os
 import requests
+import random
 import urllib
+import time
+import datetime
+import multiprocessing
+from multiprocessing import Process
+#import schedule
 from requests import get
 from aiogram import Bot, types
 from aiogram.utils import executor
@@ -20,6 +26,29 @@ BASE_MEDIA_PATH = './agg'
 bot = Bot(token=config.token)
 dp = Dispatcher(bot)
 
+
+def start_process():#Запуск Process
+	list = dbworker.find_for()
+	if list != None:
+		p1 = Process(target=m_send(list), args=(list))
+		p1.start()
+	else:
+		pass
+
+async def m_send(list):
+	for i in list:
+		await bot.send_message(chat_id=i.chat_id, text = "Время повторить тренировку в распознавании эмоций! Приходи, чтобы сохранить текущий прогресс")
+
+list_em = ['amusement', 'excitement', 'anger', 'awe', 'fear', 'contentment', 'disgust', 'sadness']
+list_1m = ['восторг', 'веселье', 'беззаботность', 'удовольствие', 'радость', 'волнение', 'азарт', 'возбуждение'] #синонимы к 'amusement', 'excitement'
+list_2m = ['злость', 'ярость', 'раздражение', 'недовольство', 'гнев'] #синонимы к 'anger'
+list_3m = ['паника', 'ужас', 'страх', 'ступор', 'боязнь', 'испуг', 'обеспокоенность', 'трепет', 'волнение', 'удивление'] #синонимы к 'awe', 'fear'
+list_4m = ['довольство', 'удовлетворенность', 'спокойствие', 'умиротворение', 'комфорт', 'нега', 'сытость'] #синонимы к contentment
+list_5m = ['отвращение', 'презрение', 'брезгливость', 'нелюбовь', 'ненависть', 'неприязнь', 'нерасположение', 'омерзение', 'антипатия'] #синонимы к 'disgust'
+list_6m = ['грусть', 'печаль', 'скорбь', 'уныние', 'отчаяние', 'тоска', 'жалость'] #синонимы к sadness
+list_0m = list_1m + list_2m + list_3m + list_4m + list_5m + list_6m
+
+
 @dp.callback_query_handler(lambda callback_query: True)
 async def send(callback_query: types.CallbackQuery):
     code = callback_query.data
@@ -31,13 +60,19 @@ async def send(callback_query: types.CallbackQuery):
     elif code == 3:
     	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Описание", reply_markup = kb.inline_kb_des)
     elif code == 4:
+    	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_TRAIN), "_", 0)
+    	chat = callback_query.message.chat.id
+    	if dbworker.was1(callback_query.message.chat.id) == True:
+    		dbworker.was(callback_query.message.chat.id)
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
-    	ran = dbworker.random_mood('amusement')
     	await bot.send_message(chat_id=callback_query.message.chat.id, text = "На фотографии изображен либо человек, либо ситуация, описывающая эмоции. Давай попробуем определить, какие")
-    	captio = 'Напиши свой вариант или сразу посмотри ответ'
-    	await bot.send_photo(chat_id=callback_query.message.chat.id,photo = ran,caption= captio, reply_markup = kb.inline_kb_train)
+    	await in_training(chat)
     elif code == 5:
-    	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup = kb.inline_kb_start)
+    	if dbworker.get_state(callback_query.message.chat.id) == int(config.States.S_TRAIN):
+    		await bot.send_message(chat_id = callback_query.message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+    	else:
+    		await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup = kb.inline_kb_start)
+    	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_START), "_", 0)
     elif code == 6:
     	captio = '<b>Радость</b>\n<i>Аналоги</i>: Восторг, Ликование, Блаженство, Восхищение\n\nСчастливый человек улыбается. Это самый верный признак радости, удовлетворенности и всех сопряженных эмоций. В настоящей улыбке счастливого человека участвует все лицо: от бровей до подбородка. Этим она отличается от улыбки фальшивой: притворщик поднимает уголки губ, не задействуя щеки и мышцы вокруг глаз. \n\n<i>Выражение лица</i>: Губы растянуты за счет поднятия щек, в уголках глаз появляются морщинки, человек как будто немного жмурится от удовольствия.\n\n<i>Положение тела</i>: Люди двигаются легко и энергично, шагают широко и позволяют рукам раскачиваться.'
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
@@ -69,20 +104,115 @@ async def send(callback_query: types.CallbackQuery):
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	await bot.send_photo(chat_id=callback_query.message.chat.id,photo = ran,caption= captio,parse_mode=types.ParseMode.HTML, reply_markup = kb.inline_kb_des1)
     elif code == 12:
-    	await bot.send_message(chat_id=callback_query.message.chat.id, text = "Раздрел не доделан", reply_markup = kb.inline_kb_back)
+    	t = dbworker.get_answ(callback_query.message.chat.id)
+    	tex =  await true_answ(t)
+    	await bot.send_message(chat_id=callback_query.message.chat.id, text = tex)
+    	await in_training(callback_query.message.chat.id)
     elif code == 13:
     	cha = callback_query.message.chat.id
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	await bot.send_message(chat_id=cha, text = "Описание", reply_markup = kb.inline_kb_des)
-    	
-    
-    
+
+#продолжение тренировки    	
+async def in_training(chat_i):
+	ph = None
+	if dbworker.get_h(chat_i) <= 15:
+		if dbworker.was1(chat_i) == True:
+			i = h_t(chat_i)
+			ph = dbworker.repeat(chat_i)
+			if ph == None:
+				ph = dbworker.random_mood(random.choice(list_em))
+			else:
+				ph = dbworker.random_mood(random.choice(list_em))
+	if ph == None:
+		ph = dbworker.random_mood(random.choice(list_em))
+	captio = 'Напиши свой вариант или сразу посмотри ответ'
+	await bot.send_photo(chat_id=chat_i,photo = ph,caption= captio, reply_markup = kb.inline_kb_train)
+	dbworker.set_h(chat_i) # +1 картинка пройдена
+	dbworker.set_send_f(chat_i, ph)
+
+#ВРЕМЯ!
+
+async def true_answ(t):
+	if t == "amusement":
+		tex = "Ответ: радость"
+	elif t == "excitement":
+		tex = "Ответ: радость"
+	elif t == "anger":
+		tex = "Ответ: злость"
+	elif t == "awe":
+		tex = "Ответ: волнение"
+	elif t == "fear":
+		tex = "Ответ: страх"
+	elif t == "contentment":
+		tex = "Ответ: спокойствие"
+	elif t == "disgust":
+		tex = "Ответ: отвращение"
+	elif t == "sadness":
+		tex = "Ответ: грусть"
+	return tex
+
 @dp.message_handler(commands=["start"])
 async def cmd_start(message: types.Message):
 	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+	dbworker.add_user(message.chat.id)
+
+@dp.message_handler(commands=["notification"])
+async def change_notif(message: types.Message):
+	if dbworker.get_notif(message.chat.id) == True:
+		dbworker.set_notif(message.chat.id, False)
+		await bot.send_message(chat_id = message.chat.id,text = "Вы выключили оповещения (-)")
+	else:
+		dbworker.set_notif(message.chat.id, True)
+		await bot.send_message(chat_id = message.chat.id,text = "Вы включили оповещения (+)")
+
+#ответ в тренировке
+@dp.message_handler()
+async def what_answ(msg: types.Message):
+	if dbworker.get_state(msg.chat.id) == int(config.States.S_TRAIN):
+		if msg.text in list_0m:
+			t = dbworker.get_answ(msg.chat.id)
+			if t == "amusement":
+				ino = list_1m
+			elif t == "excitement":
+				ino = list_1m
+			elif t == "anger":
+				ino = list_2m
+			elif t == "awe":
+				ino = list_3m
+			elif t == "fear":
+				ino = list_3m
+			elif t == "contentment":
+				ino = list_4m
+			elif t == "disgust":
+				ino = list_5m
+			elif t == "sadness":
+				ino = list_6m
+			if msg.text in ino:
+				await bot.send_message(chat_id = msg.chat.id, text = "Правильный ответ!")
+				ann = True
+			else:
+				ann = False
+				answ = await true_answ(t)
+				y = "Неправильно."
+				file = dbworker.get_cur_file(msg.chat.id)
+				#dbworker.change_one(msg.chat.id, file, ann)
+				te = y + answ
+				await bot.send_message(chat_id = msg.chat.id, text = te)
+		else:
+			file = dbworker.get_cur_file(msg.chat.id)
+			t = dbworker.get_answ(msg.chat.id)
+			#change_one(msg.chat.id, file, ann)
+			answ = await true_answ(t)
+			y = "Неправильно."
+			te = y + answ
+			await bot.send_message(chat_id = msg.chat.id, text = te)
+		await in_training(msg.chat.id)
+	else:
+		pass
 
 @dp.message_handler(commands=["random"])
-async def cmd_start(message: types.Message):
+async def cmd_random(message: types.Message):
 	ran = dbworker.random_mood('amusement')
 	await bot.send_photo(message.chat.id, ran)
 
@@ -123,4 +253,5 @@ async def load(message: types.Message):
 						i = i + 1
 						sleep(2)
 if __name__ == "__main__":
-    executor.start_polling(dp)
+	start_process()
+	executor.start_polling(dp)

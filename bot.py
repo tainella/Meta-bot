@@ -117,7 +117,9 @@ async def send(callback_query: types.CallbackQuery):
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	await bot.send_message(chat_id=cha, text = "Описание", reply_markup = kb.inline_kb_des)
     elif code == 14:
+    	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_OTV), "_", 0)
+    	await bot.send_message(chat_id=callback_query.message.chat.id, text = "Если тебе есть, что сказать, напиши это сюда", reply_markup = kb.inline_kb_back)
 
 #продолжение тренировки    	
 async def in_training(chat_i):

@@ -6,9 +6,12 @@ import os
 import requests
 import random
 import urllib
+import azuretext
 import time
 import datetime
 import multiprocessing
+from pyaspeller import YandexSpeller
+speller = YandexSpeller()
 from multiprocessing import Process
 #import schedule
 from requests import get
@@ -56,7 +59,8 @@ async def send(callback_query: types.CallbackQuery):
     if code == 1:
     	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Эмоции", reply_markup = kb.inline_kb_emotion)
     elif code == 2:
-    	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Темы для разговора", reply_markup = kb.inline_kb_back)
+    	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Темы для разговора. Напиши мне последнее, о чем ты говорил с собеседником, и я подскажу, как продолжить разговор :)", reply_markup = kb.inline_kb_back)
+    	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_THEME), "_", 0)
     elif code == 3:
     	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Описание", reply_markup = kb.inline_kb_des)
     elif code == 4:
@@ -69,9 +73,9 @@ async def send(callback_query: types.CallbackQuery):
     	await in_training(chat)
     elif code == 5:
     	if dbworker.get_state(callback_query.message.chat.id) == int(config.States.S_TRAIN):
-    		await bot.send_message(chat_id = callback_query.message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+    		await bot.send_message(chat_id = callback_query.message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
     	else:
-    		await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup = kb.inline_kb_start)
+    		await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup = kb.inline_kb_start)
     	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_START), "_", 0)
     elif code == 6:
     	captio = '<b>Радость</b>\n<i>Аналоги</i>: Восторг, Ликование, Блаженство, Восхищение\n\nСчастливый человек улыбается. Это самый верный признак радости, удовлетворенности и всех сопряженных эмоций. В настоящей улыбке счастливого человека участвует все лицо: от бровей до подбородка. Этим она отличается от улыбки фальшивой: притворщик поднимает уголки губ, не задействуя щеки и мышцы вокруг глаз. \n\n<i>Выражение лица</i>: Губы растянуты за счет поднятия щек, в уголках глаз появляются морщинки, человек как будто немного жмурится от удовольствия.\n\n<i>Положение тела</i>: Люди двигаются легко и энергично, шагают широко и позволяют рукам раскачиваться.'
@@ -112,6 +116,8 @@ async def send(callback_query: types.CallbackQuery):
     	cha = callback_query.message.chat.id
     	await bot.delete_message(callback_query.message.chat.id, callback_query.message.message_id)
     	await bot.send_message(chat_id=cha, text = "Описание", reply_markup = kb.inline_kb_des)
+    elif code == 14:
+    	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_OTV), "_", 0)
 
 #продолжение тренировки    	
 async def in_training(chat_i):
@@ -154,8 +160,13 @@ async def true_answ(t):
 
 @dp.message_handler(commands=["start"])
 async def cmd_start(message: types.Message):
-	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
 	dbworker.add_user(message.chat.id)
+
+@dp.message_handler(commands=["help"])
+async def help(message: types.Message):
+	text = '<b>Эмоции</b> - два раздела.\nЕсли зайдешь в <i>описание</i>, там будет несколько статей про то, как можно заметить эмоцию собеседника. В <i>тренировке</i> ты на примерах можешь попрактиковаться в распознавании эмоций, возникающих в какой-то ситуации, или какую испытывает человек. Не бойся ошибаться!\n\n<b>Темы для разговора</b> - раздел, куда ты можешь переслать чужое сообщение или пересказать то, что тебе рассказал устно собеседник, и я подскажу, как можно интересно продолжить разговор.\n\n<b>Если тебе есть, что сказать</b>\nНапиши сюда всё, что угодно. Отзыв о боте, или о конкретном совете бота, который не сработал. Напиши о неприятном случае общения, или недопонимании. Напиши, если просто хочется высказаться.'
+	await bot.send_message(chat_id = message.chat.id, text = text, parse_mode=types.ParseMode.HTML, reply_markup = kb.inline_kb_start)
 
 @dp.message_handler(commands=["notification"])
 async def change_notif(message: types.Message):
@@ -169,45 +180,56 @@ async def change_notif(message: types.Message):
 #ответ в тренировке
 @dp.message_handler()
 async def what_answ(msg: types.Message):
-	if dbworker.get_state(msg.chat.id) == int(config.States.S_TRAIN):
-		if msg.text in list_0m:
-			t = dbworker.get_answ(msg.chat.id)
-			if t == "amusement":
-				ino = list_1m
-			elif t == "excitement":
-				ino = list_1m
-			elif t == "anger":
-				ino = list_2m
-			elif t == "awe":
-				ino = list_3m
-			elif t == "fear":
-				ino = list_3m
-			elif t == "contentment":
-				ino = list_4m
-			elif t == "disgust":
-				ino = list_5m
-			elif t == "sadness":
-				ino = list_6m
-			if msg.text in ino:
-				await bot.send_message(chat_id = msg.chat.id, text = "Правильный ответ!")
-				ann = True
-			else:
-				ann = False
-				answ = await true_answ(t)
-				y = "Неправильно."
-				file = dbworker.get_cur_file(msg.chat.id)
-				#dbworker.change_one(msg.chat.id, file, ann)
-				te = y + answ
-				await bot.send_message(chat_id = msg.chat.id, text = te)
-		else:
-			file = dbworker.get_cur_file(msg.chat.id)
-			t = dbworker.get_answ(msg.chat.id)
-			#change_one(msg.chat.id, file, ann)
-			answ = await true_answ(t)
-			y = "Неправильно."
-			te = y + answ
-			await bot.send_message(chat_id = msg.chat.id, text = te)
-		await in_training(msg.chat.id)
+	text = msg.text
+	text = text.lower()
+	changes = {change['word']: change['s'][0] for change in speller.spell(text)}
+	for word, suggestion in changes.items():
+		text = text.replace(word, suggestion)
+	if dbworker.get_state(msg.chat.id) == int(config.States.S_TRAIN): #человек в тренировке
+		 if text in list_0m:
+		 	t = dbworker.get_answ(msg.chat.id)
+		 	if t == "amusement":
+		 		ino = list_1m
+		 	elif t == "excitement":
+		 		ino = list_1m
+		 	elif t == "anger":
+		 		ino = list_2m
+		 	elif t == "awe":
+		 		ino = list_3m
+		 	elif t == "fear":
+		 		ino = list_3m
+		 	elif t == "contentment":
+		 		ino = list_4m
+		 	elif t == "disgust":
+		 		ino = list_5m
+		 	elif t == "sadness":
+		 		ino = list_6m
+		 	if text in ino:
+		 		await bot.send_message(chat_id = msg.chat.id, text = "Правильный ответ!")
+		 		ann = True
+		 	else:
+		 		ann = False
+		 		answ = await true_answ(t)
+		 		y = "Неправильно."
+		 		file = dbworker.get_cur_file(msg.chat.id)
+		 		#dbworker.change_one(msg.chat.id, file, ann)
+		 		te = y + answ
+		 		await bot.send_message(chat_id = msg.chat.id, text = te)
+		 else:
+		 	file = dbworker.get_cur_file(msg.chat.id)
+		 	t = dbworker.get_answ(msg.chat.id)
+		 	#change_one(msg.chat.id, file, ann)
+		 	answ = await true_answ(t)
+		 	y = "Неправильно."
+		 	te = y + answ
+		 	await bot.send_message(chat_id = msg.chat.id, text = te)
+		 await in_training(msg.chat.id)
+	elif dbworker.get_state(msg.chat.id) == int(config.States.S_THEME): #человек в темах для разговора
+		text1 = azuretext.suggest(text)
+		await bot.send_message(chat_id = msg.chat.id,text = text1, reply_markup = kb.inline_kb_back)
+	elif dbworker.get_state(msg.chat.id) == int(config.States.S_OTV): #человек в обратной связи
+		text1 = 'Спасибо, что поделился.'
+		await bot.send_message(chat_id = msg.chat.id,text = text1, reply_markup = kb.inline_kb_back)
 	else:
 		pass
 
@@ -253,5 +275,5 @@ async def load(message: types.Message):
 						i = i + 1
 						sleep(2)
 if __name__ == "__main__":
-	start_process()
+	#start_process()
 	executor.start_polling(dp)

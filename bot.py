@@ -59,7 +59,7 @@ async def send(callback_query: types.CallbackQuery):
     if code == 1:
     	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Эмоции", reply_markup = kb.inline_kb_emotion)
     elif code == 2:
-    	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Темы для разговора. Напиши мне последнее, о чем ты говорил с собеседником, и я подскажу, как продолжить разговор :)", reply_markup = kb.inline_kb_back)
+    	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Темы для разговора. Напиши мне последнее, о чем ты говорил с собеседником или перешли его сообщение, и я подскажу, как продолжить разговор :)", reply_markup = kb.inline_kb_back)
     	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_THEME), "_", 0)
     elif code == 3:
     	await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Описание", reply_markup = kb.inline_kb_des)
@@ -73,9 +73,9 @@ async def send(callback_query: types.CallbackQuery):
     	await in_training(chat)
     elif code == 5:
     	if dbworker.get_state(callback_query.message.chat.id) == int(config.States.S_TRAIN):
-    		await bot.send_message(chat_id = callback_query.message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+    		await bot.send_message(chat_id = callback_query.message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. ", reply_markup=kb.inline_kb_start)
     	else:
-    		await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup = kb.inline_kb_start)
+    		await bot.edit_message_text(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help.", reply_markup = kb.inline_kb_start)
     	dbworker.set_state(callback_query.message.chat.id, int(config.States.S_START), "_", 0)
     elif code == 6:
     	captio = '<b>Радость</b>\n<i>Аналоги</i>: Восторг, Ликование, Блаженство, Восхищение\n\nСчастливый человек улыбается. Это самый верный признак радости, удовлетворенности и всех сопряженных эмоций. В настоящей улыбке счастливого человека участвует все лицо: от бровей до подбородка. Этим она отличается от улыбки фальшивой: притворщик поднимает уголки губ, не задействуя щеки и мышцы вокруг глаз. \n\n<i>Выражение лица</i>: Губы растянуты за счет поднятия щек, в уголках глаз появляются морщинки, человек как будто немного жмурится от удовольствия.\n\n<i>Положение тела</i>: Люди двигаются легко и энергично, шагают широко и позволяют рукам раскачиваться.'
@@ -162,7 +162,7 @@ async def true_answ(t):
 
 @dp.message_handler(commands=["start"])
 async def cmd_start(message: types.Message):
-	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help. Разбираюсь в таких темах:", reply_markup=kb.inline_kb_start)
+	await bot.send_message(chat_id = message.chat.id,text = "Привет :) я могу помочь тебе в общении с людьми. Чтобы получить подробную информацию нажми на команду /help.", reply_markup=kb.inline_kb_start)
 	dbworker.add_user(message.chat.id)
 
 @dp.message_handler(commands=["help"])

@@ -1,4 +1,3 @@
-import emoji
 from emoji import emojize
 #разделы
 from aiogram.types import ReplyKeyboardRemove, \
@@ -8,7 +7,8 @@ from aiogram.types import ReplyKeyboardRemove, \
 #клавиатура начала работы
 btn_1 = InlineKeyboardButton('Эмоции', callback_data='1')
 btn_2 = InlineKeyboardButton('Темы для разговора', callback_data='2')
-inline_kb_start = InlineKeyboardMarkup().add(btn_1).add(btn_2)
+btn_14 = InlineKeyboardButton('Если тебе есть, что сказать', callback_data='14')
+inline_kb_start = InlineKeyboardMarkup().add(btn_1).add(btn_2).add(btn_14)
 
 #подразделы эмоций
 btn_3 = InlineKeyboardButton('Описание', callback_data='3')

@@ -1,4 +1,4 @@
 # Meta-bot
 Bot for communication skills development
 
-Telegram
+Telegram @melya_meta_bot

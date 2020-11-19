@@ -25,7 +25,7 @@ from aiogram.types import ReplyKeyboardRemove, \
     InlineKeyboardMarkup, InlineKeyboardButton
 
 BASE_MEDIA_PATH = './agg'
-# git - круто 
+# git - 10/10 
 bot = Bot(token=config.token)
 dp = Dispatcher(bot)
 

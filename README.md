@@ -1,5 +1,5 @@
 # Meta-bot
-Bot for communication skills development
+Bot for communication skills development (Asperger sindrom)
 
 Telegram @melya_meta_bot
 
